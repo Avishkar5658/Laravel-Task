@@ -1,0 +1,28 @@
+FROM php:8.4-apache
+
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libzip-dev \
+    && docker-php-ext-install zip \
+    && a2enmod rewrite \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/src/public
+
+RUN sed -ri 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
+    /etc/apache2/sites-available/*.conf \
+    /etc/apache2/apache2.conf \
+    /etc/apache2/conf-available/*.conf
+
+WORKDIR /var/www/html
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+COPY . .
+
+RUN if [ -f composer.json ]; then composer install --no-interaction --prefer-dist --optimize-autoloader; fi
+
+EXPOSE 9000
+
+CMD ["php-fpm"]
